@@ -181,7 +181,7 @@ export function Game() {
         <Board state={state} shaking={shaking} revealRow={revealRow} />
       </section>
 
-      <section className="relative flex flex-col gap-2.5 px-2 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <section className="relative flex flex-col gap-2.5 px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {toast && (
           <div className="absolute -top-2 left-1/2 z-20 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-[#d3d6da] px-4 py-2 text-sm font-medium text-[#121213] shadow-lg">
             사전에 없는 단어입니다.
