@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* 모바일 전용 · 다크 테마 고정 */
+:root {
+  color-scheme: dark;
+  --background: #1c1c1e;
+  --foreground: #f2f2f2;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* 게임 색상 (PRD D6/D12) — 밝은 계열, 글자는 진한 색 */
+@theme {
+  --color-correct: #79c879; /* 🟩 자모+위치 정답 (연초록) */
+  --color-present: #f2cf4e; /* 🟨 자모만 정답 (골드) */
+  --color-absent: #ced1d5; /* ⬜ 썼지만 없음 (밝은 회색) */
+}
+
+/* 무효 단어 제출 시 행 흔들림 (PRD §5.3) */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.animate-shake {
+  animation: shake 0.45s ease-in-out;
+}
+
+/* 입력 시 타일 살짝 튐 */
+@keyframes pop {
+  0% { transform: scale(0.9); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: pop 0.1s ease-in-out;
+}
+
+/* 채점 공개(정답): 색이 부드럽게 차오르며 살짝 팝.
+   좌→우 stagger는 타일별 animation-delay(인라인)로 → 컴포지터가 처리해 끊김 없음 */
+@keyframes reveal-correct {
+  0% {
+    background-color: transparent;
+    border-color: #565658;
+    color: #ffffff;
+    transform: scale(0.96);
+  }
+  55% {
+    transform: scale(1.05);
+  }
+  100% {
+    background-color: var(--color-correct);
+    border-color: var(--color-correct);
+    color: #121213;
+    transform: scale(1);
+  }
+}
+.animate-reveal {
+  animation: reveal-correct 0.56s ease both;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  overscroll-behavior: none;
+}
