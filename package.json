@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:words": "tsx scripts/build-words.ts"
+    "build:words": "tsx scripts/build-words.ts",
+    "build:dict": "tsx scripts/build-dictionary.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
