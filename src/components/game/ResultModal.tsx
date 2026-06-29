@@ -23,12 +23,27 @@ export function ResultModal({
 
   async function share() {
     tapHaptic();
+    const url = window.location.href;
+    // 링크를 본문에도 포함해 어떤 앱으로 공유하든 항상 링크가 보이게
+    const text = `${buildShareText(state)}\n${url}`;
+
+    // 모바일: OS 기본 공유 시트(카톡·메일·메시지 등). 취소는 정상 종료.
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ text, url });
+      } catch {
+        // 사용자 취소 등 — 무시
+      }
+      return;
+    }
+
+    // 미지원(데스크톱 등) → 클립보드 복사 폴백
     try {
-      await navigator.clipboard.writeText(buildShareText(state));
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // 클립보드 불가 — 조용히 무시
+      // 무시
     }
   }
 
@@ -47,6 +62,7 @@ export function ResultModal({
         <p className="mt-1 text-sm text-neutral-400">
           시도 {won ? state.guesses.length : "X"}/{MAX_ATTEMPTS} · ⏱ {dur}
         </p>
+
         <div className="mt-6 flex gap-2.5">
           <button
             type="button"
