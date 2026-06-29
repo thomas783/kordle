@@ -16,6 +16,7 @@ const useIsoLayoutEffect =
 import { gameReducer, createNewGame, type GameState } from "@/lib/game";
 import { loadGame, saveGame, clearGame } from "@/lib/storage";
 import { mergeKeyboardStates, type TileState } from "@/lib/grade";
+import { tapHaptic, errorHaptic } from "@/lib/haptics";
 import { Board, REVEAL_STAGGER_MS } from "./Board";
 import { Keyboard } from "./Keyboard";
 import { Timer } from "./Timer";
@@ -76,6 +77,7 @@ export function Game() {
     }
     setShaking(true);
     setToast(true);
+    errorHaptic(); // 무효 단어 → 더 강한 진동
     const shakeId = setTimeout(() => setShaking(false), 450);
     const toastId = setTimeout(() => setToast(false), 3000);
     return () => {
@@ -181,7 +183,7 @@ export function Game() {
         <Board state={state} shaking={shaking} revealRow={revealRow} />
       </section>
 
-      <section className="relative flex flex-col gap-2.5 px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <section className="relative flex flex-col gap-5 bg-black px-8 pt-5 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
         {toast && (
           <div className="absolute -top-2 left-1/2 z-20 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-[#d3d6da] px-4 py-2 text-sm font-medium text-[#121213] shadow-lg">
             사전에 없는 단어입니다.
@@ -195,8 +197,11 @@ export function Game() {
         <button
           type="button"
           disabled={!ready}
-          onClick={() => dispatch({ type: "submit", now: Date.now() })}
-          className={`mx-0.5 rounded-xl py-3.5 text-center text-base transition-colors ${
+          onClick={() => {
+            tapHaptic();
+            dispatch({ type: "submit", now: Date.now() });
+          }}
+          className={`-mx-4 rounded-xl py-3.5 text-center text-base transition-colors ${
             ready
               ? "bg-present font-bold text-[#121213] active:opacity-90"
               : "bg-[#2c2c2e] font-semibold text-neutral-500"
