@@ -14,9 +14,9 @@ export const ANSWER_LENGTH = 5;
 const answers: WordEntry[] = data.answers;
 const guessSet = new Set<string>(data.guesses);
 
-// ⚠️ 임시(테스트용): 탭 세션당 정답 1개로 고정.
-//    새로고침해도 같은 단어, 새 탭이면 새 단어. 운영 전 false로 끄기.
-const FIX_ANSWER_PER_SESSION = true;
+// 테스트용: 탭 세션당 정답 1개로 고정 (true면 매판 같은 단어).
+// 운영은 false → 매판 랜덤.
+const FIX_ANSWER_PER_SESSION = false;
 const SESSION_KEY = "kordle.debugAnswer";
 
 /** 정답 풀에서 무작위 단어 1개 (테스트 시 세션 고정) */
