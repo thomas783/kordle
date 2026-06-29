@@ -1,95 +1,107 @@
 /**
- * 단어 사전 빌드 (스타터 버전)
+ * 게임 단어 사전 빌드 (5자모) + 정제
  *
- * 검수된 후보 단어 목록을 받아:
- *   1) 자모 분해해서 정확히 5자모인 것만 통과
- *   2) 음절 중복 제거
- *   3) 자모 시퀀스 충돌(서로 다른 단어가 같은 자모5) 제거 → 정답 풀 (PRD D10)
+ * build:dict 산출물(words-by-jamo/5.json)에서 게임용 words.json을 만든다.
+ *   - 입력 허용 풀(guesses): 5자모 전부의 자모 시퀀스 (넓게)
+ *   - 정답 풀(answers): 사전 표제어(명사+고유명사)와 교집합해 정제.
+ *       · KLUE vocab의 형태소 조각(미얀·옥수…)과 동사 활용형(잡혀·내려·고를)은
+ *         표제어 사전에 없으므로 자연 탈락 → 명사·고유명사·비속어(명사형)만 남음.
+ *       · 추가로 OpenSubtitles 빈도 사전과 교집합해 "흔한 단어" 위주로.
+ *       · 자모 시퀀스 충돌(동일 자모5) 제거 (PRD D10).
+ *
+ * 출처:
+ *   - 표제어: open-korean-text (nouns.txt, entities.txt)
+ *   - 빈도:   hermitdave/FrequencyWords (ko_50k)
+ *
  * 산출물: src/data/words.json = { answers: WordEntry[], guesses: string[] }
- *
- * ⚠️ v1.1 TODO: 후보 출처를 `klue/bert-base` vocab 필터링 결과로 교체 (PRD §2.5).
- *    지금은 "끝까지 플레이"를 위한 손수 검수 스타터 목록.
- *
- * 실행: npm run build:words
+ * 실행: npm run build:words   (5.json은 npm run build:dict로 먼저 생성)
  */
 
-import { writeFileSync, mkdirSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { decomposeWord, jamoLength } from "../src/lib/hangul";
-
-// 일상 명사 위주 후보. 5자모가 아닌 건 필터에서 자동 탈락한다.
-const CANDIDATES: string[] = [
-  // 2음절 (받침 1개 → 5자모 다수)
-  "사과", "학교", "구름", "사람", "시간", "가방", "라면", "김밥", "우산",
-  "부엌", "토끼", "단어", "가족", "친구", "거울", "공부", "노래", "바람",
-  "농구", "수박", "양파", "김치", "소금", "마늘", "녹차", "사탕", "과자",
-  "배우", "의사", "교실", "의자", "공원", "양말", "장갑", "안경", "시계",
-  "달력", "가위", "지갑", "선물", "동물", "식물", "건물", "기분", "행복",
-  "걱정", "사랑", "추억", "주말", "방학", "숙제", "점심", "저녁", "아침",
-  "겨울", "여름", "가을", "봄날", "햇빛", "구멍", "거품", "이불", "베개",
-  "수건", "비누", "치약", "냄비", "접시", "젓가", "도마", "주걱",
-  // 1음절 (쌍자음/복모음/받침 조합으로 5자모)
-  "꽉", "꿩", "쾅", "꿀", "꽃",
-  // 3음절 (받침 거의 없는 단순 단어 → 5~6자모, 5만 통과)
-  "아버지", "어머니", "바나나", "고구마", "보리차", "다리미", "도라지",
-  "코끼리", "기러기", "오소리", "두더지", "메뚜기", "거머리", "지푸라기",
-  // 노이즈(탈락 예상): 길이 검증 신뢰성 확인용
-  "바다", "나무", "구두", "모자", "포도", "우유", "커피",
-];
 
 interface WordEntry {
-  syllable: string; // 음절 형태 ("사과")
-  jamo: string; // 자모 시퀀스 ("ㅅㅏㄱㅗㅏ")
+  syllable: string;
+  jamo: string;
 }
 
-function build() {
-  // 1) 5자모 필터 + 음절 중복 제거
-  const seenSyllable = new Set<string>();
-  const fiveJamo: WordEntry[] = [];
-  const dropped: string[] = [];
+const OKT_BASE =
+  "https://raw.githubusercontent.com/open-korean-text/open-korean-text/master/src/main/resources/org/openkoreantext/processor/util/noun";
+const DICT_SOURCES: [string, string][] = [
+  ["okt-nouns", `${OKT_BASE}/nouns.txt`],
+  ["okt-entities", `${OKT_BASE}/entities.txt`],
+];
+const FREQ_URL =
+  "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/ko/ko_50k.txt";
 
-  for (const word of CANDIDATES) {
-    if (jamoLength(word) !== 5) {
-      dropped.push(`${word}(${jamoLength(word)})`);
-      continue;
+const here = dirname(fileURLToPath(import.meta.url));
+const srcPath = join(here, "..", "src", "data", "words-by-jamo", "5.json");
+const outPath = join(here, "..", "src", "data", "words.json");
+const cacheDir = join(here, ".cache");
+
+const HANGUL = /^[가-힣]+$/;
+
+async function fetchCached(name: string, url: string): Promise<string> {
+  const cache = join(cacheDir, `${name}.txt`);
+  if (existsSync(cache)) return readFileSync(cache, "utf8");
+  console.log(`⬇️  ${name} 다운로드...`);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${name} 다운로드 실패: HTTP ${res.status}`);
+  const text = await res.text();
+  mkdirSync(cacheDir, { recursive: true });
+  writeFileSync(cache, text, "utf8");
+  return text;
+}
+
+async function getDictWords(): Promise<Set<string>> {
+  const set = new Set<string>();
+  for (const [name, url] of DICT_SOURCES) {
+    const text = await fetchCached(name, url);
+    for (const line of text.split("\n")) {
+      const w = line.trim();
+      if (HANGUL.test(w)) set.add(w);
     }
-    if (seenSyllable.has(word)) continue;
-    seenSyllable.add(word);
-    fiveJamo.push({ syllable: word, jamo: decomposeWord(word).join("") });
   }
+  return set;
+}
 
-  // 2) 자모 시퀀스 충돌 제거 → 정답 풀 (한 자모키당 첫 단어만)
+async function getFreqWords(): Promise<Set<string>> {
+  const text = await fetchCached("ko-freq-50k", FREQ_URL);
+  const set = new Set<string>();
+  for (const line of text.split("\n")) {
+    const word = line.trim().split(/\s+/)[0];
+    if (word && HANGUL.test(word)) set.add(word);
+  }
+  return set;
+}
+
+async function build() {
+  const all: WordEntry[] = JSON.parse(readFileSync(srcPath, "utf8"));
+  const dict = await getDictWords();
+  const freq = await getFreqWords();
+
+  // 입력 허용 풀: 5자모 전부
+  const guesses = [...new Set(all.map((e) => e.jamo))];
+
+  // 정답 풀: 표제어(명사/고유명사) ∩ 빈도 ∩ 충돌 제거
   const byJamo = new Map<string, WordEntry>();
-  const collisions: string[] = [];
-  for (const entry of fiveJamo) {
-    if (byJamo.has(entry.jamo)) {
-      collisions.push(`${entry.syllable} ≡ ${byJamo.get(entry.jamo)!.syllable}`);
-      continue;
-    }
-    byJamo.set(entry.jamo, entry);
+  for (const e of all) {
+    if (!dict.has(e.syllable)) continue; // 동사 활용형·조각 제거
+    if (!freq.has(e.syllable)) continue; // 흔한 단어 위주
+    if (!byJamo.has(e.jamo)) byJamo.set(e.jamo, e);
   }
-
   const answers = [...byJamo.values()];
-  // 입력 허용 풀: 일단 정답 풀의 자모키 전체 (v1.1에서 KLUE로 확장)
-  const guesses = answers.map((e) => e.jamo);
 
-  const out = { answers, guesses };
-
-  const here = dirname(fileURLToPath(import.meta.url));
-  const dataDir = join(here, "..", "src", "data");
-  mkdirSync(dataDir, { recursive: true });
-  writeFileSync(
-    join(dataDir, "words.json"),
-    JSON.stringify(out, null, 2) + "\n",
-    "utf8",
-  );
-
-  console.log(`✅ words.json 생성`);
-  console.log(`   정답 풀: ${answers.length}개`);
-  console.log(`   입력 허용: ${guesses.length}개`);
-  if (collisions.length) console.log(`   충돌 제거: ${collisions.join(", ")}`);
-  console.log(`   5자모 아님 탈락(${dropped.length}): ${dropped.join(", ")}`);
+  writeFileSync(outPath, JSON.stringify({ answers, guesses }) + "\n", "utf8");
+  console.log(`✅ words.json`);
+  console.log(`   정답 풀: ${answers.length}개 (표제어 ∩ 빈도)`);
+  console.log(`   입력 허용: ${guesses.length}개 (5자모 전부)`);
 }
 
 build();
