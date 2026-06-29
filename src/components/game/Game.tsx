@@ -68,9 +68,12 @@ export function Game() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // 무효 제출 → 흔들림 + 토스트
+  // 무효 제출 → 흔들림 + 토스트. 입력/삭제로 invalidAt이 풀리면 토스트 즉시 제거
   useEffect(() => {
-    if (!state?.invalidAt) return;
+    if (!state?.invalidAt) {
+      setToast(false);
+      return;
+    }
     setShaking(true);
     setToast(true);
     const shakeId = setTimeout(() => setShaking(false), 450);
