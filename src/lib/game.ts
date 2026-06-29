@@ -51,7 +51,8 @@ export type GameAction =
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "load":
-      return action.state;
+      // invalidAt은 일시적 UI 신호 — 복원 시 토스트/흔들림/진동 재발동 방지
+      return { ...action.state, invalidAt: null };
 
     case "input": {
       if (state.status !== "playing") return state;
