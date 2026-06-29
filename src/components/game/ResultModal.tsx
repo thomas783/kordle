@@ -4,6 +4,7 @@ import { useState } from "react";
 import { buildShareText } from "@/lib/share";
 import { formatDuration } from "@/lib/format";
 import { MAX_ATTEMPTS } from "@/lib/words";
+import { tapHaptic } from "@/lib/haptics";
 import type { GameState } from "@/lib/game";
 
 export function ResultModal({
@@ -21,6 +22,7 @@ export function ResultModal({
       : "-";
 
   async function share() {
+    tapHaptic();
     try {
       await navigator.clipboard.writeText(buildShareText(state));
       setCopied(true);
@@ -55,7 +57,10 @@ export function ResultModal({
           </button>
           <button
             type="button"
-            onClick={onRestart}
+            onClick={() => {
+              tapHaptic();
+              onRestart();
+            }}
             className="flex-1 rounded-xl bg-[#48484a] py-3 font-semibold text-white active:opacity-80"
           >
             다시하기

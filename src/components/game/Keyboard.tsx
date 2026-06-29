@@ -1,4 +1,5 @@
 import type { TileState } from "@/lib/grade";
+import { tapHaptic } from "@/lib/haptics";
 
 const STATE_CLASS: Record<TileState, string> = {
   correct: "bg-correct text-[#121213]",
@@ -32,9 +33,12 @@ function Key({
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`flex h-14 shrink-0 grow-0 basis-[calc((100%-3rem)/9)] items-center justify-center rounded-md text-xl font-medium transition-colors ${
-        state ? STATE_CLASS[state] : "bg-[#3a3a3c] text-white active:bg-[#4a4a4c]"
+      onClick={() => {
+        tapHaptic();
+        onClick();
+      }}
+      className={`flex h-11 shrink-0 grow-0 basis-[calc((100%-3rem)/9)] items-center justify-center rounded-md text-xl font-medium transition-colors ${
+        state ? STATE_CLASS[state] : "bg-[#141416] text-white active:bg-[#242428]"
       }`}
     >
       {label}
