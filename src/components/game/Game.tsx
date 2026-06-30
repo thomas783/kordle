@@ -21,6 +21,7 @@ import { Board, REVEAL_STAGGER_MS } from "./Board";
 import { Keyboard } from "./Keyboard";
 import { Timer } from "./Timer";
 import { ResultModal } from "./ResultModal";
+import { AuthButton } from "@/components/auth/AuthButton";
 
 const REVEAL_DURATION_MS = 560; // CSS reveal-correct 애니메이션 길이와 일치
 
@@ -170,6 +171,9 @@ export function Game() {
         <h1 className="text-center text-2xl font-bold tracking-tight">
           단어 맞히기
         </h1>
+        <div className="absolute left-4 top-4">
+          <AuthButton />
+        </div>
         <div className="absolute right-4 top-5">
           <Timer
             startedAt={state.startedAt}
